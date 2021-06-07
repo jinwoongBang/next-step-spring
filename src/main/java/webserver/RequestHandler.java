@@ -15,8 +15,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import util.HttpRequestUtils;
 import util.IOUtils;
 
 public class RequestHandler extends Thread {
@@ -31,8 +33,9 @@ public class RequestHandler extends Thread {
     public void run() {
         log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
                 connection.getPort());
-
         Map<String, Object> requestHeader = new HashMap<>();
+        Map<String, String> paramMap = new HashMap<>();;
+        User user;
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
@@ -68,8 +71,32 @@ public class RequestHandler extends Thread {
             }
             log.info("Method : {}, RequestURL : {}, Protocol : {}", requestHeader.get("Method"), requestHeader.get("RequestURL"), requestHeader.get("Protocol"));
 
-            String url = (String) Optional.of(requestHeader.get("RequestURL")).orElse("");
-            File webappFile = new File("./webapp" + url);
+            Object path = requestHeader.get("RequestURL");
+            String requestPath = path != null ? (String) path : "";
+
+            boolean hasQueryParams = requestPath.contains("?");
+            String queryParams;
+            if (hasQueryParams) {
+                String[] splitOfQueryParams = requestPath.split("\\?");
+                requestPath = splitOfQueryParams[0];
+                queryParams = splitOfQueryParams[1];
+                log.info("Query Params : {}", queryParams);
+                paramMap = HttpRequestUtils.parseQueryString(queryParams);
+            }
+
+            switch(requestPath) {
+                case "/user/create":
+                    String userId = paramMap.get("userId");
+                    String password = paramMap.get("password");
+                    String name = paramMap.get("name");
+                    String email = paramMap.get("email");
+                    user = new User(userId, password, name, email);
+                    log.info("user : {}", user.toString());
+                    break;
+                default:
+            }
+
+            File webappFile = new File("./webapp" + requestPath);
             boolean isExists = webappFile.exists();
             byte[] body = "404_NOT_FOUNT".getBytes();
             if (isExists) {
@@ -79,7 +106,6 @@ public class RequestHandler extends Thread {
             DataOutputStream dos = new DataOutputStream(out);
             response200Header(dos, body.length);
             responseBody(dos, body);
-
         } catch (IOException e) {
             log.error(e.getMessage());
         }
