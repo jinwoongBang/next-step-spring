@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import model.ContextUser;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,6 @@ public class RequestHandler extends Thread {
     Map<String, String> requestHeader = new HashMap<>();
     Map<String, String> requestBody = new HashMap<>();
     Map<String, String> queryParamMap = new HashMap<>();
-    User user;
 
     try (InputStream in = connection.getInputStream(); OutputStream out = connection
         .getOutputStream()) {
@@ -82,7 +82,8 @@ public class RequestHandler extends Thread {
           }
       }
 
-      log.info("Method : {}, RequestURL : {}, Protocol : {}", method, requestURL, protocol);
+      log.info("Method : {}, RequestURL : {}, Protocol : {}, requestBody : {}", method, requestURL,
+          protocol, requestBody.toString());
 
       String redirectURL = requestURL;
 
@@ -90,16 +91,35 @@ public class RequestHandler extends Thread {
         case "":
         case "/":
           break;
-        case "/user/create":
+        case "/user/create": {
           String userId = requestBody.get("userId");
           String password = requestBody.get("password");
           String name = requestBody.get("name");
           String email = requestBody.get("email");
-          user = new User(userId, password, name, email);
-          log.info("user : {}", user.toString());
+          User user = new User(userId, password, name, email);
+          ContextUser.setUser(user);
+          log.warn("user : {}, thread user : {}", user.toString(), ContextUser.getUser().toString());
           redirectURL = "/index.html";
           httpStatus = 302;
           break;
+        }
+        case "/user/login": {
+          String userId = requestBody.get("userId");
+          String password = requestBody.get("password");
+          User user = ContextUser.getUser();
+          log.warn("user : {}", user.toString());
+          boolean isEqualsUserId = user.getUserId().equals(userId);
+          boolean isEqualsPassword = user.getPassword().equals(password);
+          if (isEqualsUserId && isEqualsPassword) {
+            log.info("Login Success");
+            redirectURL = "/index.html";
+            httpStatus = 302;
+          } else {
+            log.info("Login Failure");
+            redirectURL = "/user/login_failed.html";
+            httpStatus = 302;
+          }
+        }
         default:
           break;
       }
@@ -120,11 +140,14 @@ public class RequestHandler extends Thread {
           break;
         case 302:
           response302Header(dos, body.length, redirectURL);
+          break;
         case 404:
           body = "404_NOT_FOUND".getBytes();
           response200Header(dos, body.length);
+          break;
         default:
           response200Header(dos, body.length);
+          break;
       }
       responseBody(dos, body);
     } catch (IOException e) {
@@ -201,6 +224,7 @@ public class RequestHandler extends Thread {
       log.error(e.getMessage());
     }
   }
+
   private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String location) {
     try {
       dos.writeBytes("HTTP/1.1 302 OK \r\n");
