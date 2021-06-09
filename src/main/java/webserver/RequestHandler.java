@@ -41,6 +41,7 @@ public class RequestHandler extends Thread {
     log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
         connection.getPort());
     Map<String, String> requestHeader = new HashMap<>();
+    Map<String, String> responseHeader = new HashMap<>();
     Map<String, String> requestBody = new HashMap<>();
     Map<String, String> queryParamMap = new HashMap<>();
 
@@ -90,6 +91,13 @@ public class RequestHandler extends Thread {
       switch (requestURL) {
         case "":
         case "/":
+        case "/index.html":
+          redirectURL = "/index.html";
+          responseHeader.put("Location", redirectURL);
+          String cookie = responseHeader.get("Set-Cookie");
+          if (cookie != null) {
+            responseHeader.put("Cookie", "logined=true");
+          }
           break;
         case "/user/create": {
           String userId = requestBody.get("userId");
@@ -98,7 +106,8 @@ public class RequestHandler extends Thread {
           String email = requestBody.get("email");
           User user = new User(userId, password, name, email);
           ContextUser.setUser(user);
-          log.warn("user : {}, thread user : {}", user.toString(), ContextUser.getUser().toString());
+          log.warn("user : {}, thread user : {}", user.toString(),
+              ContextUser.getUser().toString());
           redirectURL = "/index.html";
           httpStatus = 302;
           break;
@@ -113,11 +122,13 @@ public class RequestHandler extends Thread {
           if (isEqualsUserId && isEqualsPassword) {
             log.info("Login Success");
             redirectURL = "/index.html";
-            httpStatus = 302;
+            responseHeader.put("Location", redirectURL);
+            responseHeader.put("Set-Cookie", "logined=true");
           } else {
             log.info("Login Failure");
             redirectURL = "/user/login_failed.html";
-            httpStatus = 302;
+            responseHeader.put("Location", redirectURL);
+            responseHeader.put("Set-Cookie", "logined=false");
           }
         }
         default:
@@ -136,7 +147,7 @@ public class RequestHandler extends Thread {
       DataOutputStream dos = new DataOutputStream(out);
       switch (httpStatus) {
         case 200:
-          response200Header(dos, body.length);
+          responseHeader(dos, body.length, httpStatus, responseHeader);
           break;
         case 302:
           response302Header(dos, body.length, redirectURL);
@@ -219,6 +230,24 @@ public class RequestHandler extends Thread {
       dos.writeBytes("HTTP/1.1 200 OK \r\n");
       dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void responseHeader(DataOutputStream dos, int lengthOfBodyContent, int status,
+      Map<String, String> headers) {
+    try {
+      dos.writeBytes("HTTP/1.1 " + status + " OK " + "\r\n");
+//      dos.writeBytes("HTTP/1.1 200 OK \r\n");
+      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      for (Map.Entry<String, String> header : headers.entrySet()) {
+        String key = header.getKey();
+        String value = header.getValue();
+        dos.writeBytes(key + ": " + value + "\r\n");
+      }
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
