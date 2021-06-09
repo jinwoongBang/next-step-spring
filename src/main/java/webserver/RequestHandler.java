@@ -30,6 +30,7 @@ public class RequestHandler extends Thread {
   private static final String HTTP_METHOD_POST = "POST";
 
   private Socket connection;
+  private int httpStatus = 200;
 
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
@@ -96,6 +97,8 @@ public class RequestHandler extends Thread {
           String email = requestBody.get("email");
           user = new User(userId, password, name, email);
           log.info("user : {}", user.toString());
+          redirectURL = "/index.html";
+          httpStatus = 302;
           break;
         default:
           break;
@@ -103,13 +106,26 @@ public class RequestHandler extends Thread {
 
       File webappFile = new File("./webapp" + redirectURL);
       boolean isExists = webappFile.exists();
-      byte[] body = "404_NOT_FOUNT".getBytes();
+      byte[] body = "".getBytes();
       if (isExists) {
         body = Files.readAllBytes(webappFile.toPath());
+      } else {
+        httpStatus = 404;
       }
 
       DataOutputStream dos = new DataOutputStream(out);
-      response200Header(dos, body.length);
+      switch (httpStatus) {
+        case 200:
+          response200Header(dos, body.length);
+          break;
+        case 302:
+          response302Header(dos, body.length, redirectURL);
+        case 404:
+          body = "404_NOT_FOUND".getBytes();
+          response200Header(dos, body.length);
+        default:
+          response200Header(dos, body.length);
+      }
       responseBody(dos, body);
     } catch (IOException e) {
       log.error(e.getMessage());
@@ -185,12 +201,12 @@ public class RequestHandler extends Thread {
       log.error(e.getMessage());
     }
   }
-  private void response302Header(DataOutputStream dos, int lengthOfBodyContent) {
+  private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String location) {
     try {
       dos.writeBytes("HTTP/1.1 302 OK \r\n");
       dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-      dos.writeBytes("Location: /index.html" + "\r\n");
+      dos.writeBytes("Location: " + location + "\r\n");
       dos.writeBytes("\r\n");
     } catch (IOException e) {
       log.error(e.getMessage());
