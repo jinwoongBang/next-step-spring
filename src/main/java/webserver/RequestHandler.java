@@ -169,21 +169,6 @@ public class RequestHandler extends Thread {
       }
 
       DataOutputStream dos = new DataOutputStream(out);
-//      switch (httpStatus) {
-//        case 200:
-//          responseHeader(dos, body.length, httpStatus, responseHeader);
-//          break;
-//        case 302:
-//          response302Header(dos, body.length, redirectURL);
-//          break;
-//        case 404:
-//          body = "404_NOT_FOUND".getBytes();
-//          response200Header(dos, body.length);
-//          break;
-//        default:
-//          response200Header(dos, body.length);
-//          break;
-//      }
       responseHeader(dos, body.length, httpStatus, responseHeader);
       responseBody(dos, body);
     } catch (IOException e) {
