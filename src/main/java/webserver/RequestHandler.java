@@ -8,11 +8,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import model.User;
@@ -22,112 +20,189 @@ import util.HttpRequestUtils;
 import util.IOUtils;
 
 public class RequestHandler extends Thread {
-    private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
-    private Socket connection;
+  private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
+  private static final String REQUEST_METHOD_KEY = "Method";
+  private static final String REQUEST_URL_KEY = "URL";
+  private static final String REQUEST_PROTOCOL_KEY = "Protocol";
 
-    public RequestHandler(Socket connectionSocket) {
-        this.connection = connectionSocket;
+  private static final String HTTP_METHOD_GET = "GET";
+  private static final String HTTP_METHOD_POST = "POST";
+
+  private Socket connection;
+
+  public RequestHandler(Socket connectionSocket) {
+    this.connection = connectionSocket;
+  }
+
+  public void run() {
+    log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
+        connection.getPort());
+    Map<String, String> requestHeader = new HashMap<>();
+    Map<String, String> requestBody = new HashMap<>();
+    Map<String, String> queryParamMap = new HashMap<>();
+    User user;
+
+    try (InputStream in = connection.getInputStream(); OutputStream out = connection
+        .getOutputStream()) {
+      // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
+      requestHeader = createRequestHeaderMap(bufferedReader);
+
+      if (requestHeader.isEmpty()) {
+        return;
+      }
+
+      String method = requestHeader.get(REQUEST_METHOD_KEY);
+      String requestURL = requestHeader.get(REQUEST_URL_KEY);
+      String protocol = requestHeader.get(REQUEST_PROTOCOL_KEY);
+      String contentLength = requestHeader.get("Content-Length");
+
+      switch (method) {
+        case HTTP_METHOD_GET:
+          boolean hasQueryParams = requestURL.contains("?");
+          if (hasQueryParams) {
+            String[] splitOfQueryParams = requestURL.split("\\?");
+            requestURL = splitOfQueryParams[0];
+            String queryParams = splitOfQueryParams[1];
+            log.info("Query Params : {}", queryParams);
+            queryParamMap = HttpRequestUtils.parseQueryString(queryParams);
+          }
+          break;
+        case HTTP_METHOD_POST:
+          if (contentLength != null) {
+            String body = IOUtils.readData(bufferedReader, Integer.parseInt(contentLength));
+            String[] bodyList = body.split("&");
+            for (int i = 0; i < bodyList.length; i++) {
+              String keyAndValue = bodyList[i];
+              String[] keyAndValueList = keyAndValue.split("=");
+              requestBody.put(keyAndValueList[0], keyAndValueList[1]);
+            }
+          }
+      }
+
+      log.info("Method : {}, RequestURL : {}, Protocol : {}", method, requestURL, protocol);
+
+      String redirectURL = requestURL;
+
+      switch (requestURL) {
+        case "":
+        case "/":
+          break;
+        case "/user/create":
+          String userId = requestBody.get("userId");
+          String password = requestBody.get("password");
+          String name = requestBody.get("name");
+          String email = requestBody.get("email");
+          user = new User(userId, password, name, email);
+          log.info("user : {}", user.toString());
+          break;
+        default:
+          break;
+      }
+
+      File webappFile = new File("./webapp" + redirectURL);
+      boolean isExists = webappFile.exists();
+      byte[] body = "404_NOT_FOUNT".getBytes();
+      if (isExists) {
+        body = Files.readAllBytes(webappFile.toPath());
+      }
+
+      DataOutputStream dos = new DataOutputStream(out);
+      response200Header(dos, body.length);
+      responseBody(dos, body);
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    } catch (Exception er) {
+      log.error(er.getMessage());
+      er.printStackTrace();
+    }
+  }
+
+  private Map<String, String> createRequestHeaderMap(BufferedReader bufferedReader)
+      throws IOException {
+    Map<String, String> headers = new HashMap<>();
+    String oneLineHeader = null;
+    Pattern pattern = Pattern.compile(":\\s");
+
+    while (!(oneLineHeader = bufferedReader.readLine()).equals("")) {
+      log.debug(oneLineHeader);
+      Matcher matcher = pattern.matcher(oneLineHeader);
+      boolean hasColone = matcher.find();
+      headers.putAll(
+          hasColone ? createRequestHeaderMap(oneLineHeader) : createRequestURLMap(oneLineHeader));
     }
 
-    public void run() {
-        log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
-                connection.getPort());
-        Map<String, Object> requestHeader = new HashMap<>();
-        Map<String, String> paramMap = new HashMap<>();;
-        User user;
+    return headers;
+  }
 
-        try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
-            // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
-            String temp;
-            Pattern pattern = Pattern.compile(":\\s");
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
+  private String createRequestBodyMap(BufferedReader bufferedReader)
+      throws IOException {
+    StringBuffer stringBuffer = new StringBuffer();
+    while (bufferedReader.ready()) {
+      int ch = bufferedReader.read();
+      log.info(String.valueOf((char) ch));
+      if ((ch < 0) || (ch == '\n')) {
+        break;
+      }
+      stringBuffer.append((char) ch);
+    }
+    return stringBuffer.toString();
+  }
 
-            while((temp = bufferedReader.readLine()) != null) {
-                log.info(temp);
-                if (temp == null || temp.equals("")) {
-                    break;
-                }
+  private Map<String, String> createRequestHeaderMap(String header) {
+    Map<String, String> headerMap = new HashMap<>();
+    String[] keyAndValue = header.split(":\\s");
+    String key = keyAndValue[0];
+    String value = keyAndValue[1];
+    headerMap.put(key, value);
 
-                Matcher matcher = pattern.matcher(temp);
-                boolean hasColone = matcher.find();
-                String[] clientRequest;
+    return headerMap;
+  }
 
-                if (hasColone) {
-                    clientRequest = temp.split(":\\s");
-                    String key = clientRequest[0];
-                    key = key.replace("-", "");
-                    String value = clientRequest[1];
-                    requestHeader.put(key, value);
-                } else {
-                    clientRequest = temp.split("\\s");
-                    String method = clientRequest[0];
-                    String requestURL = clientRequest[1];
-                    String protocol = clientRequest[2];
-                    requestHeader.put("Method", method);
-                    requestHeader.put("RequestURL", requestURL);
-                    requestHeader.put("Protocol", protocol);
-                }
-            }
-            log.info("Method : {}, RequestURL : {}, Protocol : {}", requestHeader.get("Method"), requestHeader.get("RequestURL"), requestHeader.get("Protocol"));
+  private Map<String, String> createRequestURLMap(String header) {
+    Map<String, String> headerMap = new HashMap<>();
+    if (header.length() == 0) {
+      return headerMap;
+    }
+    String[] keyList = {REQUEST_METHOD_KEY, REQUEST_URL_KEY, REQUEST_PROTOCOL_KEY};
+    String[] headerList = header.split("\\s");
 
-            Object path = requestHeader.get("RequestURL");
-            String requestPath = path != null ? (String) path : "";
-
-            boolean hasQueryParams = requestPath.contains("?");
-            String queryParams;
-            if (hasQueryParams) {
-                String[] splitOfQueryParams = requestPath.split("\\?");
-                requestPath = splitOfQueryParams[0];
-                queryParams = splitOfQueryParams[1];
-                log.info("Query Params : {}", queryParams);
-                paramMap = HttpRequestUtils.parseQueryString(queryParams);
-            }
-
-            switch(requestPath) {
-                case "/user/create":
-                    String userId = paramMap.get("userId");
-                    String password = paramMap.get("password");
-                    String name = paramMap.get("name");
-                    String email = paramMap.get("email");
-                    user = new User(userId, password, name, email);
-                    log.info("user : {}", user.toString());
-                    break;
-                default:
-            }
-
-            File webappFile = new File("./webapp" + requestPath);
-            boolean isExists = webappFile.exists();
-            byte[] body = "404_NOT_FOUNT".getBytes();
-            if (isExists) {
-                body = Files.readAllBytes(webappFile.toPath());
-            }
-
-            DataOutputStream dos = new DataOutputStream(out);
-            response200Header(dos, body.length);
-            responseBody(dos, body);
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
+    for (int i = 0; i < headerList.length; i++) {
+      headerMap.put(keyList[i], headerList[i]);
     }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+    return headerMap;
+  }
 
-    private void responseBody(DataOutputStream dos, byte[] body) {
-        try {
-            dos.write(body, 0, body.length);
-            dos.flush();
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
+  private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
+    try {
+      dos.writeBytes("HTTP/1.1 200 OK \r\n");
+      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
     }
+  }
+  private void response302Header(DataOutputStream dos, int lengthOfBodyContent) {
+    try {
+      dos.writeBytes("HTTP/1.1 302 OK \r\n");
+      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+      dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+      dos.writeBytes("Location: /index.html" + "\r\n");
+      dos.writeBytes("\r\n");
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
+
+  private void responseBody(DataOutputStream dos, byte[] body) {
+    try {
+      dos.write(body, 0, body.length);
+      dos.flush();
+    } catch (IOException e) {
+      log.error(e.getMessage());
+    }
+  }
 }
