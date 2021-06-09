@@ -91,14 +91,12 @@ public class RequestHandler extends Thread {
       switch (requestURL) {
         case "":
         case "/":
-        case "/index.html":
+        case "/index.html": {
           redirectURL = "/index.html";
           responseHeader.put("Location", redirectURL);
-          String cookie = responseHeader.get("Set-Cookie");
-          if (cookie != null) {
-            responseHeader.put("Cookie", "logined=true");
-          }
+          responseHeader.put("Content-Type", "text/html;charset=utf-8");
           break;
+        }
         case "/user/create": {
           String userId = requestBody.get("userId");
           String password = requestBody.get("password");
@@ -110,6 +108,7 @@ public class RequestHandler extends Thread {
               ContextUser.getUser().toString());
           redirectURL = "/index.html";
           httpStatus = 302;
+          responseHeader.put("Location", redirectURL);
           break;
         }
         case "/user/login": {
@@ -130,8 +129,33 @@ public class RequestHandler extends Thread {
             responseHeader.put("Location", redirectURL);
             responseHeader.put("Set-Cookie", "logined=false");
           }
+          responseHeader.put("Content-Type", "text/html;charset=utf-8");
+          break;
+        }
+        case "/user/list": {
+          String cookies = requestHeader.get("Cookie");
+          boolean isLogined = false;
+          if (cookies != null) {
+            Map<String, String> cookie = HttpRequestUtils.parseCookies(cookies);
+            String loginedCookie = cookie.get("logined");
+            isLogined = Boolean.parseBoolean(loginedCookie);
+          }
+
+          if (isLogined) {
+            redirectURL = "/user/list.html";
+          } else {
+            redirectURL = "/user/login.html";
+          }
+          responseHeader.put("Content-Type", "text/html;charset=utf-8");
+          break;
         }
         default:
+          Pattern cssPattern = Pattern.compile(".css");
+          Matcher cssMatcher= cssPattern.matcher(requestURL);
+          boolean isCss = cssMatcher.find();
+          if (isCss) {
+            responseHeader.put("Content-Type", "text/css");
+          }
           break;
       }
 
@@ -145,21 +169,22 @@ public class RequestHandler extends Thread {
       }
 
       DataOutputStream dos = new DataOutputStream(out);
-      switch (httpStatus) {
-        case 200:
-          responseHeader(dos, body.length, httpStatus, responseHeader);
-          break;
-        case 302:
-          response302Header(dos, body.length, redirectURL);
-          break;
-        case 404:
-          body = "404_NOT_FOUND".getBytes();
-          response200Header(dos, body.length);
-          break;
-        default:
-          response200Header(dos, body.length);
-          break;
-      }
+//      switch (httpStatus) {
+//        case 200:
+//          responseHeader(dos, body.length, httpStatus, responseHeader);
+//          break;
+//        case 302:
+//          response302Header(dos, body.length, redirectURL);
+//          break;
+//        case 404:
+//          body = "404_NOT_FOUND".getBytes();
+//          response200Header(dos, body.length);
+//          break;
+//        default:
+//          response200Header(dos, body.length);
+//          break;
+//      }
+      responseHeader(dos, body.length, httpStatus, responseHeader);
       responseBody(dos, body);
     } catch (IOException e) {
       log.error(e.getMessage());
@@ -241,7 +266,7 @@ public class RequestHandler extends Thread {
     try {
       dos.writeBytes("HTTP/1.1 " + status + " OK " + "\r\n");
 //      dos.writeBytes("HTTP/1.1 200 OK \r\n");
-      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+//      dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
       dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
       for (Map.Entry<String, String> header : headers.entrySet()) {
         String key = header.getKey();
