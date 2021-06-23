@@ -17,11 +17,11 @@ public class HttpRequest {
 
   private static final Logger log = LoggerFactory.getLogger(HttpRequest.class);
 
-  private BufferedReader bufferedReader;
+  private final BufferedReader bufferedReader;
 
-  private Map<String, String> headers = new HashMap<>();
-  private Map<String, String> requestBody = new HashMap<>();
-  private Map<String, String> queryParams = new HashMap<>();
+  private final Map<String, String> headers = new HashMap<>();
+  private final Map<String, String> requestBody = new HashMap<>();
+  private final Map<String, String> queryParams = new HashMap<>();
 
   private HttpMethod method;
   private String path;
@@ -92,7 +92,7 @@ public class HttpRequest {
       this.path = splitOfQueryParams[0];
       String queryParams = splitOfQueryParams[1];
       log.info("Query Params : {}", queryParams);
-      this.queryParams = HttpRequestUtils.parseQueryString(queryParams);
+      this.queryParams.putAll(HttpRequestUtils.parseQueryString(queryParams));
     }
   }
 
@@ -107,12 +107,8 @@ public class HttpRequest {
     String[] headerList = generalHeader.split("\\s");
     String method = headerList[0];
     log.debug("[getGeneralHeader] headerList : {}", Arrays.toString(headerList));
-    if (HttpMethod.GET.name().equals(method)) {
-      this.method = HttpMethod.GET;
-    } else if (HttpMethod.POST.name().equals(method)) {
-      this.method = HttpMethod.POST;
-    }
 
+    this.method = HttpMethod.valueOf(method);
     this.path = headerList[1];
     this.protocol = headerList[2];
 
