@@ -20,8 +20,8 @@ public class HttpRequest {
   private BufferedReader bufferedReader;
 
   private Map<String, String> headers = new HashMap<>();
-  private Map<String, String> requestBody;
-  private Map<String, String> queryParams;
+  private Map<String, String> requestBody = new HashMap<>();
+  private Map<String, String> queryParams = new HashMap<>();
 
   private HttpMethod method;
   private String url;
@@ -54,8 +54,6 @@ public class HttpRequest {
       getRequestBody();
     }
 
-//    log.info("Method : {}, RequestURL : {}, Protocol : {}, requestBody : {}", this.method, this.url,
-//        this.protocol, this.requestBody.toString());
   }
 
   public String getHeader(String key) {
@@ -121,6 +119,8 @@ public class HttpRequest {
 
     this.url = headerList[1];
     this.protocol = headerList[2];
+
+    log.debug("[getGeneralHeader] Method : {}, RequestURL : {}, Protocol : {}", method, url, protocol);
   }
 
   public HttpMethod getMethod() {
