@@ -15,11 +15,6 @@ public class LoginController extends AbstractController {
   private boolean isLogined = false;
 
   @Override
-  public void doGet(HttpRequest request, HttpResponse response) {
-
-  }
-
-  @Override
   public void doPost(HttpRequest request, HttpResponse response) {
     String userId = request.getRequestBody("userId");
     String password = request.getRequestBody("password");

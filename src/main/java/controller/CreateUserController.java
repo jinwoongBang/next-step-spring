@@ -14,11 +14,6 @@ public class CreateUserController extends AbstractController {
   private static final Logger log = LoggerFactory.getLogger(CreateUserController.class);
 
   @Override
-  public void doGet(HttpRequest request, HttpResponse response) {
-
-  }
-
-  @Override
   public void doPost(HttpRequest request, HttpResponse response) {
     User user = createUser(request);
     DataBase.addUser(user);

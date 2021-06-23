@@ -40,8 +40,4 @@ public class UserListController extends AbstractController {
 
     response.forwardBody(sb.toString());
   }
-
-  @Override
-  public void doPost(HttpRequest request, HttpResponse response) {
-  }
 }
