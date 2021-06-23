@@ -19,7 +19,7 @@ public class HttpRequest {
   private BufferedReader bufferedReader;
 
   private Map<String, String> headers = new HashMap<>();
-  private Map<String, String> body;
+  private Map<String, String> requestBody;
   private Map<String, String> queryParams;
 
   private HttpMethod method;
@@ -47,14 +47,14 @@ public class HttpRequest {
       log.error(e.getMessage());
     }
 
-    if (this.method.equals(HttpMethod.GET)) {
+    if (HttpMethod.GET.equals(this.method)) {
       getQueryParams();
-    } else if (this.method.equals(HttpMethod.POST)) {
-      getBody();
+    } else if (HttpMethod.POST.equals(this.method)) {
+      getRequestBody();
     }
 
     log.info("Method : {}, RequestURL : {}, Protocol : {}, requestBody : {}", this.method, this.url,
-        this.protocol, this.body.toString());
+        this.protocol, this.requestBody.toString());
   }
 
   public String getHeader(String key) {
@@ -70,10 +70,10 @@ public class HttpRequest {
   }
 
   public String getRequestBody(String key) {
-    return this.body.get(key);
+    return this.requestBody.get(key);
   }
 
-  private void getBody() {
+  private void getRequestBody() {
     int contentLength = Integer.parseInt(getHeader("Content-Length"));
     String body = null;
     try {
@@ -83,7 +83,7 @@ public class HttpRequest {
       for (int i = 0; i < bodyList.length; i++) {
         String keyAndValue = bodyList[i];
         String[] keyAndValueList = keyAndValue.split("=");
-        this.body.put(keyAndValueList[0], keyAndValueList[1]);
+        this.requestBody.put(keyAndValueList[0], keyAndValueList[1]);
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -120,6 +120,14 @@ public class HttpRequest {
 
     this.url = headerList[1];
     this.protocol = headerList[2];
+  }
+
+  public HttpMethod getMethod() {
+    return this.method;
+  }
+
+  public String getPath() {
+    return this.url;
   }
 
 
