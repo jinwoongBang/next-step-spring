@@ -26,27 +26,26 @@ public class HttpResponse {
     this.dos = new DataOutputStream(outputStream);
   }
 
-
-  public void sendResource(String path) {
+  public void response200Header(String path) {
     findWebappFile(path);
     setHttpStatus(HttpStatus.OK);
     addHeader("Location", path);
     addHeader("Content-Type", "text/html;charset=utf-8");
-    responseHeader(this.body.length, this.httpStatus);
+    processHeaders(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
 
   public void forward(String path) {
     findWebappFile(path);
     setHttpStatus(HttpStatus.OK);
-    responseHeader(this.body.length, this.httpStatus);
+    processHeaders(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
 
   public void forwardBody(String body) {
     setHttpStatus(HttpStatus.OK);
     setResponseBody(body);
-    responseHeader(this.body.length, this.httpStatus);
+    processHeaders(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
 
@@ -55,11 +54,11 @@ public class HttpResponse {
     setHttpStatus(HttpStatus.REDIRECT);
     addHeader("Location", path);
     addHeader("Content-Type", "text/html;charset=utf-8");
-    responseHeader(this.body.length, this.httpStatus);
+    processHeaders(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
 
-  private void responseHeader(int lengthOfBodyContent, HttpStatus httpStatus) {
+  private void processHeaders(int lengthOfBodyContent, HttpStatus httpStatus) {
     String generalHeader = String.format("HTTP/1.1 %d %s \r\n", httpStatus.getCode(), httpStatus.name());
     String entityHeader = String.format("Content-Length: %d \r\n", lengthOfBodyContent);
 

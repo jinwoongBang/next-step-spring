@@ -75,7 +75,7 @@ public class RequestHandler extends Thread {
         httpResponse.addHeader("Set-Cookie", String.format("logined=%s", this.isLogined));
         httpResponse.sendRedirect(this.isLogined ? "/index.html" : "/user/login_failed.html");
       } else if (requestURL.endsWith(".html")) {
-        httpResponse.sendResource(requestURL);
+        httpResponse.response200Header(requestURL);
       } else if (requestURL.endsWith(".css")) {
         httpResponse.addHeader("Content-Type", "text/css");
         httpResponse.forward(requestURL);
