@@ -24,7 +24,7 @@ public class HttpRequest {
   private Map<String, String> queryParams = new HashMap<>();
 
   private HttpMethod method;
-  private String url;
+  private String path;
   private String protocol;
 
   public HttpRequest(InputStream inputStream) {
@@ -64,10 +64,6 @@ public class HttpRequest {
     return this.queryParams.get(key);
   }
 
-  public String getURL() {
-    return this.url;
-  }
-
   public String getRequestBody(String key) {
     return this.requestBody.get(key);
   }
@@ -90,10 +86,10 @@ public class HttpRequest {
   }
 
   private void getQueryParams() {
-    boolean hasQueryParams = this.url.contains("?");
+    boolean hasQueryParams = this.path.contains("?");
     if (hasQueryParams) {
-      String[] splitOfQueryParams = this.url.split("\\?");
-      this.url = splitOfQueryParams[0];
+      String[] splitOfQueryParams = this.path.split("\\?");
+      this.path = splitOfQueryParams[0];
       String queryParams = splitOfQueryParams[1];
       log.info("Query Params : {}", queryParams);
       this.queryParams = HttpRequestUtils.parseQueryString(queryParams);
@@ -117,10 +113,10 @@ public class HttpRequest {
       this.method = HttpMethod.POST;
     }
 
-    this.url = headerList[1];
+    this.path = headerList[1];
     this.protocol = headerList[2];
 
-    log.debug("[getGeneralHeader] Method : {}, RequestURL : {}, Protocol : {}", method, url, protocol);
+    log.debug("[getGeneralHeader] Method : {}, RequestURL : {}, Protocol : {}", method, path, protocol);
   }
 
   public HttpMethod getMethod() {
@@ -128,7 +124,7 @@ public class HttpRequest {
   }
 
   public String getPath() {
-    return this.url;
+    return this.path;
   }
 
 
