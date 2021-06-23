@@ -22,6 +22,7 @@ public class HttpRequest {
   private final Map<String, String> headers = new HashMap<>();
   private final Map<String, String> requestBody = new HashMap<>();
   private final Map<String, String> queryParams = new HashMap<>();
+  private final Map<String, String> cookie = new HashMap<>();
 
   private HttpMethod method;
   private String path;
@@ -48,12 +49,17 @@ public class HttpRequest {
       log.error(e.getMessage());
     }
 
+    if (this.headers.isEmpty()) {
+      return;
+    }
+
     if (HttpMethod.GET.equals(this.method)) {
       getQueryParams();
     } else if (HttpMethod.POST.equals(this.method)) {
       getRequestBody();
     }
 
+    this.cookie.putAll(HttpRequestUtils.parseCookies(this.requestBody.get("Cookie")));
   }
 
   public String getHeader(String key) {
@@ -112,7 +118,8 @@ public class HttpRequest {
     this.path = headerList[1];
     this.protocol = headerList[2];
 
-    log.debug("[getGeneralHeader] Method : {}, RequestURL : {}, Protocol : {}", method, path, protocol);
+    log.debug("[getGeneralHeader] Method : {}, RequestURL : {}, Protocol : {}", method, path,
+        protocol);
   }
 
   public HttpMethod getMethod() {
@@ -121,6 +128,10 @@ public class HttpRequest {
 
   public String getPath() {
     return this.path;
+  }
+
+  public String getCookie(String key) {
+    return this.cookie.get(key);
   }
 
 
