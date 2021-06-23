@@ -1,5 +1,6 @@
 package webserver;
 
+import controller.UserListController;
 import db.DataBase;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -26,9 +27,13 @@ public class RequestHandler extends Thread {
   private Socket connection;
 
   private boolean isLogined = false;
+  private final Map<String, Controller> controllerMap;
 
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
+
+    this.controllerMap = new HashMap<String, Controller>();
+    this.controllerMap.put("/user/list.html", new UserListController());
   }
 
   public void run() {
@@ -45,23 +50,10 @@ public class RequestHandler extends Thread {
 
       String requestURL = httpRequest.getPath();
 
-      if (requestURL.equals("/user/list.html")) {
-        if (!this.isLogined) {
-          httpResponse.sendRedirect("/user/login.html" );
-        }
+      Controller controller= controllerMap.get(requestURL);
 
-        Collection<User> users = DataBase.findAll();
-        StringBuilder sb = new StringBuilder();
-        sb.append("<table border='1'>");
-        for(User user : users) {
-          sb.append("<tr>");
-          sb.append("<td>" + user.getUserId() + "</td>");
-          sb.append("<td>" + user.getName() + "</td>");
-          sb.append("<td>" + user.getEmail() + "</td>");
-          sb.append("</tr>");
-        }
-        sb.append("</table>");
-        httpResponse.forwardBody(sb.toString());
+      if (requestURL.equals("/user/list.html")) {
+        controller.service(httpRequest, httpResponse);
       } else if (requestURL.equals("/user/create")) {
         User user = createUser(httpRequest);
         DataBase.addUser(user);
