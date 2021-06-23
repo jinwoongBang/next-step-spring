@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import model.HttpMethod;
@@ -53,8 +54,8 @@ public class HttpRequest {
       getRequestBody();
     }
 
-    log.info("Method : {}, RequestURL : {}, Protocol : {}, requestBody : {}", this.method, this.url,
-        this.protocol, this.requestBody.toString());
+//    log.info("Method : {}, RequestURL : {}, Protocol : {}, requestBody : {}", this.method, this.url,
+//        this.protocol, this.requestBody.toString());
   }
 
   public String getHeader(String key) {
@@ -111,7 +112,7 @@ public class HttpRequest {
   private void getGeneralHeader(String generalHeader) {
     String[] headerList = generalHeader.split("\\s");
     String method = headerList[0];
-
+    log.debug("[getGeneralHeader] headerList : {}", Arrays.toString(headerList));
     if (HttpMethod.GET.name().equals(method)) {
       this.method = HttpMethod.GET;
     } else if (HttpMethod.POST.name().equals(method)) {
