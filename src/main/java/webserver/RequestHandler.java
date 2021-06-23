@@ -1,5 +1,7 @@
 package webserver;
 
+import controller.CreateUserController;
+import controller.LoginController;
 import controller.UserListController;
 import db.DataBase;
 import java.io.DataOutputStream;
@@ -26,14 +28,14 @@ public class RequestHandler extends Thread {
 
   private Socket connection;
 
-  private boolean isLogined = false;
   private final Map<String, Controller> controllerMap;
 
   public RequestHandler(Socket connectionSocket) {
     this.connection = connectionSocket;
-
     this.controllerMap = new HashMap<String, Controller>();
     this.controllerMap.put("/user/list.html", new UserListController());
+    this.controllerMap.put("/user/login", new LoginController());
+    this.controllerMap.put("/user/create", new CreateUserController());
   }
 
   public void run() {
@@ -43,34 +45,20 @@ public class RequestHandler extends Thread {
     try (InputStream in = connection.getInputStream(); OutputStream out = connection
         .getOutputStream()) {
       HttpRequest httpRequest = new HttpRequest(in);
-      this.isLogined = Boolean.parseBoolean(httpRequest.getCookie("logined"));
-      log.info("Is Logined : {}", this.isLogined);
 
       HttpResponse httpResponse = new HttpResponse(out);
 
       String requestURL = httpRequest.getPath();
 
-      Controller controller= controllerMap.get(requestURL);
+      Controller controller = controllerMap.get(requestURL);
 
-      if (requestURL.equals("/user/list.html")) {
-        controller.service(httpRequest, httpResponse);
-      } else if (requestURL.equals("/user/create")) {
-        User user = createUser(httpRequest);
-        DataBase.addUser(user);
-        log.warn("user : {}", user.toString());
-        httpResponse.sendRedirect("/index.html");
-      } else if (requestURL.equals("/user/login")) {
-        String userId = httpRequest.getRequestBody("userId");
-        String password = httpRequest.getRequestBody("password");
-        User user = DataBase.findUserById(userId);
-        this.isLogined = user != null && user.getPassword().equals(password);
-        httpResponse.addHeader("Set-Cookie", String.format("logined=%s", this.isLogined));
-        httpResponse.sendRedirect(this.isLogined ? "/index.html" : "/user/login_failed.html");
-      } else if (requestURL.endsWith(".html")) {
+      if (controller == null && requestURL.endsWith(".html")) {
         httpResponse.response200Header(requestURL);
-      } else if (requestURL.endsWith(".css")) {
+      } else if (controller == null && requestURL.endsWith(".css")) {
         httpResponse.addHeader("Content-Type", "text/css");
         httpResponse.forward(requestURL);
+      } else if (controller != null) {
+        controller.service(httpRequest, httpResponse);
       }
     } catch (IOException e) {
       log.error(e.getMessage());
@@ -78,15 +66,5 @@ public class RequestHandler extends Thread {
       log.error(er.getMessage());
       er.printStackTrace();
     }
-  }
-
-  public User createUser(HttpRequest httpRequest) {
-    String userId = httpRequest.getRequestBody("userId");
-    String password = httpRequest.getRequestBody("password");
-    String name = httpRequest.getRequestBody("name");
-    String email = httpRequest.getRequestBody("email");
-    User user = new User(userId, password, name, email);
-
-    return user;
   }
 }
