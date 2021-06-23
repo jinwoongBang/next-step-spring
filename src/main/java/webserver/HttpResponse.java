@@ -26,18 +26,12 @@ public class HttpResponse {
     this.dos = new DataOutputStream(outputStream);
   }
 
-  public void sendResponseBody(String path) {
-    findWebappFile(path);
-    setHttpStatus(HttpStatus.OK);
-    responseHeader(this.body.length, this.httpStatus);
-    responseBody(this.body);
-  }
 
   public void sendResource(String path) {
     findWebappFile(path);
     setHttpStatus(HttpStatus.OK);
-    setHeader("Location", path);
-    setHeader("Content-Type", "text/html;charset=utf-8");
+    addHeader("Location", path);
+    addHeader("Content-Type", "text/html;charset=utf-8");
     responseHeader(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
@@ -49,11 +43,18 @@ public class HttpResponse {
     responseBody(this.body);
   }
 
+  public void forwardBody(String body) {
+    setHttpStatus(HttpStatus.OK);
+    setResponseBody(body);
+    responseHeader(this.body.length, this.httpStatus);
+    responseBody(this.body);
+  }
+
   public void sendRedirect(String path) {
     findWebappFile(path);
     setHttpStatus(HttpStatus.REDIRECT);
-    setHeader("Location", path);
-    setHeader("Content-Type", "text/html;charset=utf-8");
+    addHeader("Location", path);
+    addHeader("Content-Type", "text/html;charset=utf-8");
     responseHeader(this.body.length, this.httpStatus);
     responseBody(this.body);
   }
@@ -101,7 +102,7 @@ public class HttpResponse {
   }
 
 
-  public void setHeader(String key, String value) {
+  public void addHeader(String key, String value) {
     this.headers.put(key, value);
   }
 

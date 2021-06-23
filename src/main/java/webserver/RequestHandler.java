@@ -61,8 +61,7 @@ public class RequestHandler extends Thread {
           sb.append("</tr>");
         }
         sb.append("</table>");
-        httpResponse.setResponseBody(sb.toString());
-        httpResponse.sendResponseBody(requestURL);
+        httpResponse.forwardBody(sb.toString());
       } else if (requestURL.equals("/user/create")) {
         User user = createUser(httpRequest);
         DataBase.addUser(user);
@@ -73,19 +72,14 @@ public class RequestHandler extends Thread {
         String password = httpRequest.getRequestBody("password");
         User user = DataBase.findUserById(userId);
         this.isLogined = user != null && user.getPassword().equals(password);
-        httpResponse.setHeader("Set-Cookie", String.format("logined=%s", this.isLogined));
+        httpResponse.addHeader("Set-Cookie", String.format("logined=%s", this.isLogined));
         httpResponse.sendRedirect(this.isLogined ? "/index.html" : "/user/login_failed.html");
       } else if (requestURL.endsWith(".html")) {
         httpResponse.sendResource(requestURL);
       } else if (requestURL.endsWith(".css")) {
-        httpResponse.setHeader("Content-Type", "text/css");
+        httpResponse.addHeader("Content-Type", "text/css");
         httpResponse.forward(requestURL);
       }
-      // default 404 page
-//      else {
-//        httpResponse.setHttpStatus(HttpStatus.NOT_FOUND);
-//        httpResponse.send();
-//      }
     } catch (IOException e) {
       log.error(e.getMessage());
     } catch (Exception er) {
