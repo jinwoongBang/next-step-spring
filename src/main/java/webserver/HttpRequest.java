@@ -49,17 +49,11 @@ public class HttpRequest {
       log.error(e.getMessage());
     }
 
-    if (this.headers.isEmpty()) {
-      return;
-    }
-
     if (HttpMethod.GET.equals(this.method)) {
       getQueryParams();
     } else if (HttpMethod.POST.equals(this.method)) {
       getRequestBody();
     }
-
-    this.cookie.putAll(HttpRequestUtils.parseCookies(this.requestBody.get("Cookie")));
   }
 
   public String getHeader(String key) {
@@ -106,7 +100,12 @@ public class HttpRequest {
     String[] keyAndValue = header.split(":\\s");
     String key = keyAndValue[0];
     String value = keyAndValue[1];
-    this.headers.put(key, value);
+
+    if ("Cookie".equals(key)) {
+      this.cookie.putAll(HttpRequestUtils.parseCookies(value));
+    } else {
+      this.headers.put(key, value);
+    }
   }
 
   private void getGeneralHeader(String generalHeader) {

@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -38,13 +39,30 @@ public class RequestHandler extends Thread {
         .getOutputStream()) {
       HttpRequest httpRequest = new HttpRequest(in);
       this.isLogined = Boolean.parseBoolean(httpRequest.getCookie("logined"));
+      log.info("Is Logined : {}", this.isLogined);
 
       HttpResponse httpResponse = new HttpResponse(out);
 
       String requestURL = httpRequest.getPath();
 
       if (requestURL.equals("/user/list.html")) {
-        httpResponse.sendRedirect(this.isLogined ? "/user/list.html" : "/user/login.html");
+        if (!this.isLogined) {
+          httpResponse.sendRedirect("/user/login.html" );
+        }
+
+        Collection<User> users = DataBase.findAll();
+        StringBuilder sb = new StringBuilder();
+        sb.append("<table border='1'>");
+        for(User user : users) {
+          sb.append("<tr>");
+          sb.append("<td>" + user.getUserId() + "</td>");
+          sb.append("<td>" + user.getName() + "</td>");
+          sb.append("<td>" + user.getEmail() + "</td>");
+          sb.append("</tr>");
+        }
+        sb.append("</table>");
+        httpResponse.setResponseBody(sb.toString());
+        httpResponse.sendResponseBody(requestURL);
       } else if (requestURL.equals("/user/create")) {
         User user = createUser(httpRequest);
         DataBase.addUser(user);

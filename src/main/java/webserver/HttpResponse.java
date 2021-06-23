@@ -26,6 +26,13 @@ public class HttpResponse {
     this.dos = new DataOutputStream(outputStream);
   }
 
+  public void sendResponseBody(String path) {
+    findWebappFile(path);
+    setHttpStatus(HttpStatus.OK);
+    responseHeader(this.body.length, this.httpStatus);
+    responseBody(this.body);
+  }
+
   public void sendResource(String path) {
     findWebappFile(path);
     setHttpStatus(HttpStatus.OK);
@@ -100,5 +107,9 @@ public class HttpResponse {
 
   public void setHttpStatus(HttpStatus httpStatus) {
     this.httpStatus = httpStatus;
+  }
+
+  public void setResponseBody(String responseBody) {
+    this.body = responseBody.getBytes();
   }
 }
